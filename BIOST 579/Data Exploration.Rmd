@@ -1,0 +1,230 @@
+---
+title: "BIOST 579 Project"
+author: "Benjamin Stan"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Initial Exploration
+
+```{r echo=FALSE}
+rm(list = ls())
+setwd("/Users/bstan/Documents/UW/Courses/BIOST 579")
+library(tidyverse)
+library(tidyr)
+library(tinytex)
+library(dplyr)
+voter <- read_csv("dataset.csv")
+```
+
+```{r}
+#head(voter)
+table(voter$race)/nrow(voter)
+#colnames(voter)
+table(voter$voter_category)/nrow(voter)
+table(voter$income_cat)/nrow(voter)
+table(voter$educ)/nrow(voter)
+table(voter$gender)/nrow(voter)
+voter$voter_category_bin <- voter$voter_category %in% c("always","sporadic")
+table(voter$voter_category_bin)/nrow(voter)
+
+# Count NAs
+colSums(is.na(voter))[colSums(is.na(voter)) > 0]
+
+# Reencode survey questions of interest
+voter$changes_needed <- ifelse(voter$Q7 == 1,TRUE,FALSE)
+voter$sys_race_problem <- ifelse(voter$Q3_1 %in% c(1,2),TRUE,FALSE)
+
+# Reencode Q18 (barriers to voting)
+q_18_colnames <- colnames(dplyr::select(voter,contains("Q18")))
+table(voter[[q_18_colnames[3]]])
+for (col in q_18_colnames) {
+  voter[[col]] <- ifelse(voter[[col]]==1,1,0)
+}
+colSums(dplyr::select(voter,contains("Q18")))/nrow(voter) # Gives percent for each barrier
+voter$faced_barrier <- rowSums(dplyr::select(voter,contains("Q18"))) >= 1 # aggregates all
+sum(voter$faced_barrier)/nrow(voter)
+```
+
+```{r}
+perc_color <- "#69b3a2"
+voter_color <- rgb(0.2, 0.6, 0.9, 1)
+
+educ_summary <- voter %>% 
+                group_by(educ) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(educ_summary, aes(x = educ)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Education Level",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+```
+
+```{r}
+race_summary <- voter %>% 
+                group_by(race) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(race_summary, aes(x = race)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Race",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+```
+
+```{r}
+income_summary <- voter %>% 
+                group_by(income_cat) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(income_summary, aes(x = income_cat)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Income Category",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+```
+
+```{r}
+barrier_summary <- voter %>% 
+                group_by(faced_barrier) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(barrier_summary, aes(x = faced_barrier)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Faced Barrier",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+
+```
+
+```{r}
+sex_summary <- voter %>% 
+                group_by(gender) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(sex_summary, aes(x = gender)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Sex",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+
+```
+
+```{r}
+changes_summary <- voter %>% 
+                group_by(changes_needed) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(changes_summary, aes(x = changes_needed)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Believes Changes Needed to Design and Structure of US Gov",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+```
+
+```{r}
+sys_race_summary <- voter %>% 
+                group_by(sys_race_problem) %>%
+                summarise(perc = n()/nrow(voter),
+                          perc_voter = sum(voter_category_bin)/nrow(voter))
+ggplot(sys_race_summary, aes(x = sys_race_problem)) + 
+  geom_bar(aes(y = perc, colour="% of Respondants"), stat = "identity") +
+  geom_point(aes(y = perc_voter, colour="% Voter"), stat = "identity",size=2.5) +
+  scale_y_continuous(labels=scales::percent) +
+  labs(x = "Believes Systemic Racism is a Problem",
+       y = "%",
+       color = "Legend") +
+  scale_color_manual(values = c(NA,voter_color)) +
+  scale_fill_manual(values= c(perc_color,NA)) +
+  theme_bw()
+```
+
+```{r}
+voter$changes_needed <- ifelse(voter$Q7 == 1,1,0)
+voter$sys_race_problem <- ifelse(voter$Q3_1 %in% c(1,2),1,0)
+df <- voter %>% dplyr::select(income_cat,
+                       educ,
+                       race,
+                       gender,
+                       ppage,
+                       faced_barrier,
+                       changes_needed,
+                       #sys_race_problem,
+                       voter_category_bin
+                       )
+df$is_black <- ifelse(df$race=="Black",1,0)
+df$is_hispanic <- ifelse(df$race=="Hispanic",1,0)
+df$is_other_race <- ifelse(df$race=="Other/Mixed",1,0)
+df$is_lt40k <- ifelse(df$income_cat=="Less than $40k",1,0)
+df$is_40k_75k <- ifelse(df$income_cat=="$40-75k",1,0)
+df$is_75k_120k <- ifelse(df$income_cat=="$75-125k",1,0)
+df$is_hs_or_less <- ifelse(df$educ=="High school or less",1,0)
+df$is_some_college <- ifelse(df$educ=="Some college",1,0)
+df$is_female <- ifelse(df$gender=="Female",1,0)
+
+cor_matrix = cor(df %>% dplyr::select(is_black,
+                     is_hispanic,
+                     is_other_race,
+                     is_lt40k,
+                     is_40k_75k,
+                     is_75k_120k,
+                     is_hs_or_less,
+                     is_some_college,
+                     is_female,
+                     ppage,
+                     faced_barrier,
+                     changes_needed,
+                     voter_category_bin))
+
+log_reg1 <- glm(voter_category_bin ~ is_black + is_hispanic + is_other_race + is_lt40k + is_40k_75k + is_75k_120k + is_hs_or_less + is_some_college + is_female + ppage , data = df, family = "binomial")
+
+log_reg2 <- glm(voter_category_bin ~ is_black + is_hispanic + is_other_race + is_lt40k + is_40k_75k + is_75k_120k + is_hs_or_less + is_some_college + is_female + ppage + faced_barrier , data = df, family = "binomial")
+
+log_reg3 <- glm(voter_category_bin ~ is_black + is_hispanic + is_other_race + is_lt40k + is_40k_75k + is_75k_120k + is_hs_or_less + is_some_college + is_female + ppage + changes_needed, data = df, family = "binomial")
+
+log_reg_base <- glm(voter_category_bin ~ is_lt40k + is_40k_75k + is_75k_120k + is_hs_or_less + is_some_college + is_female + ppage , data = df, family = "binomial")
+anova(log_reg1,log_reg_base,test="LRT")
+
+anova(log_reg1,log_reg2,test="LRT")
+
+anova(log_reg1,log_reg3,test="LRT")
+
+coef(log_reg3)
+round(confint(log_reg3),3)
+summary(log_reg3)
+#kable(round(cor_matrix,3))
+```
